@@ -11,6 +11,8 @@ wheels/
 
 # Environment variables
 .env
+
+# Data
 /common
 
 # Logs
@@ -19,3 +21,18 @@ logs/*.zip
 
 # Eval results
 tests/evals/results/*.json
+
+# Docs / internal
+CLAUDE.md
+ТЕХНИЧЕСКОЕ_ЗАДАНИЕ.md
+ТЕХНИЧЕСКОЕ_ЗАДАНИЕ_AI_АССИСТЕНТ.docx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
