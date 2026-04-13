@@ -1,0 +1,166 @@
+from __future__ import annotations
+
+import asyncio
+import json
+
+import polars as pl
+from loguru import logger
+
+from app.services import excel as excel_svc
+
+TOOLS: list[dict] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": (
+                "Возвращает список всех доступных Excel-файлов (.xlsx). "
+                "Используй это первым, чтобы узнать какие данные доступны."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sheet_names",
+            "description": "Возвращает список листов в указанном Excel-файле.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_name": {
+                        "type": "string",
+                        "description": "Имя файла из list_files.",
+                    },
+                },
+                "required": ["file_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "describe_sheet",
+            "description": (
+                "Возвращает метаданные листа: количество строк, названия столбцов, "
+                "типы данных и количество пустых значений. "
+                "Используй перед load_sheet или search_in_sheet, чтобы узнать точные имена столбцов."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_name": {"type": "string"},
+                    "sheet_name": {"type": "string"},
+                },
+                "required": ["file_name", "sheet_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "load_sheet",
+            "description": (
+                "Загружает весь лист и возвращает содержимое в формате CSV. "
+                "Для больших листов предпочитай search_in_sheet с фильтрацией."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_name": {"type": "string"},
+                    "sheet_name": {"type": "string"},
+                },
+                "required": ["file_name", "sheet_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_in_sheet",
+            "description": (
+                "Ищет строки в листе по значению в столбце. "
+                "Укажи value для поиска подстроки (регистронезависимо), "
+                "или find_nulls=true чтобы найти пустые ячейки в столбце."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_name": {"type": "string"},
+                    "sheet_name": {"type": "string"},
+                    "column": {
+                        "type": "string",
+                        "description": "Имя столбца (используй describe_sheet чтобы узнать точные названия).",
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Подстрока для поиска. Не указывай если используешь find_nulls.",
+                    },
+                    "find_nulls": {
+                        "type": "boolean",
+                        "description": "Если true — вернуть строки где столбец пустой.",
+                    },
+                },
+                "required": ["file_name", "sheet_name", "column"],
+            },
+        },
+    },
+]
+
+
+def _df_to_str(df: pl.DataFrame) -> str:
+    if df.is_empty():
+        return "(нет строк — результат пустой)"
+    return df.write_csv()
+
+
+async def call_tool(name: str, arguments: dict) -> str:
+    """Выполняет tool call и возвращает результат строкой. Никогда не бросает исключений."""
+    try:
+        if name == "list_files":
+            result = await asyncio.to_thread(excel_svc.list_files)
+            return json.dumps(result, ensure_ascii=False)
+
+        elif name == "get_sheet_names":
+            result = await asyncio.to_thread(
+                excel_svc.get_sheet_names, arguments["file_name"]
+            )
+            return json.dumps(result, ensure_ascii=False)
+
+        elif name == "describe_sheet":
+            result = await asyncio.to_thread(
+                excel_svc.describe_sheet,
+                arguments["file_name"],
+                arguments["sheet_name"],
+            )
+            return json.dumps(result, ensure_ascii=False, default=str)
+
+        elif name == "load_sheet":
+            df = await asyncio.to_thread(
+                excel_svc.load_sheet,
+                arguments["file_name"],
+                arguments["sheet_name"],
+            )
+            return _df_to_str(df)
+
+        elif name == "search_in_sheet":
+            df = await asyncio.to_thread(
+                excel_svc.search_in_sheet,
+                arguments["file_name"],
+                arguments["sheet_name"],
+                arguments["column"],
+                value=arguments.get("value"),
+                find_nulls=bool(arguments.get("find_nulls", False)),
+            )
+            return _df_to_str(df)
+
+        else:
+            return f"Неизвестный инструмент: {name}"
+
+    except Exception as exc:
+        logger.warning("Tool '{name}' failed: {exc}", name=name, exc=exc)
+        return f"Ошибка выполнения инструмента '{name}': {exc}"
