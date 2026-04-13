@@ -1,0 +1,8 @@
+.venv
+.env
+__pycache__
+*.py[oc]
+logs/
+common/
+tests/evals/results/
+.git
