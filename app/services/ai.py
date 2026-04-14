@@ -130,4 +130,9 @@ async def ask(user_message: str) -> str:
 
     except Exception as exc:
         logger.exception("AI service error: {exc}", exc=exc)
+        msg = str(exc)
+        if "insufficient_quota" in msg or "quota" in msg.lower():
+            return "⚠️ Исчерпан лимит OpenAI API. Пополните баланс на platform.openai.com."
+        if "rate_limit" in msg.lower():
+            return "⚠️ Превышен лимит запросов к OpenAI. Подождите немного и попробуйте снова."
         return "Произошла ошибка при обработке запроса. Попробуйте ещё раз."

@@ -19,10 +19,11 @@ from pathlib import Path
 from app.config import settings
 from app.services.ai import ask
 from tests.evals.cases.excel_cases import EXCEL_CASES, EvalCase
+from tests.evals.cases.full_cases import FULL_CASES
 from tests.evals.cases.web_cases import WEB_CASES
 from tests.evals.judge import judge, judge_consistency
 
-ALL_CASES: list[EvalCase] = EXCEL_CASES + WEB_CASES
+ALL_CASES: list[EvalCase] = EXCEL_CASES + WEB_CASES + FULL_CASES
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
