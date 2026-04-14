@@ -15,6 +15,33 @@ _JUDGE_SYSTEM = (
 )
 
 
+async def judge_consistency(question: str, answer1: str, answer2: str) -> tuple[bool, str]:
+    """Проверяет что два ответа на один вопрос смыслово совпадают."""
+    prompt = (
+        f"Вопрос пользователя:\n{question}\n\n"
+        f"Ответ 1:\n{answer1}\n\n"
+        f"Ответ 2:\n{answer2}\n\n"
+        "Являются ли эти два ответа смыслово согласованными? "
+        "Они должны содержать одинаковые ключевые факты (числа, имена, даты). "
+        "Незначительные различия в формулировках допустимы. "
+        'Ответь JSON: {"passed": true или false, "reason": "краткое объяснение"}'
+    )
+
+    response = await _client.chat.completions.create(
+        model=settings.openai_model,
+        messages=[
+            {"role": "system", "content": _JUDGE_SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
+        response_format={"type": "json_object"},
+    )
+
+    raw = response.choices[0].message.content or "{}"
+    data = json.loads(raw)
+    return bool(data.get("passed", False)), str(data.get("reason", ""))
+
+
 async def judge(question: str, answer: str, checks: list[str]) -> tuple[bool, str]:
     """Оценивает ответ бота по списку критериев. Возвращает (passed, reason)."""
     numbered = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(checks))

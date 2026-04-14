@@ -91,12 +91,15 @@ def search_in_sheet(
     *,
     value: str | None = None,
     find_nulls: bool = False,
+    date_from: str | None = None,
+    date_to: str | None = None,
 ) -> pl.DataFrame:
     """
     Поиск в конкретном листе.
 
     - find_nulls=True → строки где column пустой
     - value=... → строки где column содержит value (регистронезависимо)
+    - date_from / date_to → фильтр по диапазону дат (формат YYYY-MM-DD или YYYY)
     """
     df = load_sheet(file_name, sheet_name)
 
@@ -116,6 +119,15 @@ def search_in_sheet(
         )
         return result
 
+    if date_from is not None or date_to is not None:
+        result = _filter_by_date(df, col_match, date_from, date_to)
+        logger.info(
+            "Date filter [{from_}..{to}] in '{col}' of {file}/{sheet}: {n} rows",
+            from_=date_from, to=date_to, col=col_match,
+            file=file_name, sheet=sheet_name, n=len(result),
+        )
+        return result
+
     if value is not None:
         result = df.filter(
             pl.col(col_match).cast(pl.Utf8).str.to_lowercase().str.contains(
@@ -129,6 +141,46 @@ def search_in_sheet(
         return result
 
     return df
+
+
+def _filter_by_date(
+    df: pl.DataFrame,
+    col: str,
+    date_from: str | None,
+    date_to: str | None,
+) -> pl.DataFrame:
+    """Фильтрует DataFrame по диапазону дат. Принимает YYYY или YYYY-MM-DD."""
+    from datetime import datetime
+
+    def _parse(s: str, end: bool) -> datetime:
+        s = s.strip()
+        if len(s) == 4:
+            return datetime(int(s), 12, 31, 23, 59, 59) if end else datetime(int(s), 1, 1)
+        return datetime.strptime(s, "%Y-%m-%d")
+
+    dtype = df[col].dtype
+
+    if dtype in (pl.Utf8, pl.String):
+        work = df.with_columns(
+            pl.col(col).str.to_datetime(format="%Y-%m-%d", strict=False).alias("__date_col__")
+        )
+        filter_col = "__date_col__"
+    else:
+        work = df
+        filter_col = col
+
+    exprs = []
+    if date_from:
+        exprs.append(pl.col(filter_col) >= _parse(date_from, end=False))
+    if date_to:
+        exprs.append(pl.col(filter_col) <= _parse(date_to, end=True))
+
+    result = work.filter(pl.all_horizontal(exprs))
+
+    if filter_col == "__date_col__":
+        result = result.drop("__date_col__")
+
+    return result
 
 
 def _find_column(df: pl.DataFrame, name: str) -> str | None:

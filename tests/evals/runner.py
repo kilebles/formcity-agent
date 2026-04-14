@@ -20,7 +20,7 @@ from app.config import settings
 from app.services.ai import ask
 from tests.evals.cases.excel_cases import EXCEL_CASES, EvalCase
 from tests.evals.cases.web_cases import WEB_CASES
-from tests.evals.judge import judge
+from tests.evals.judge import judge, judge_consistency
 
 ALL_CASES: list[EvalCase] = EXCEL_CASES + WEB_CASES
 
@@ -70,10 +70,17 @@ async def _run_idempotency(case: EvalCase) -> list[dict]:
     print(f"  [IDEMPOTENCY] {case.id} — запуск 2/2")
     r2 = await _run_case(case)
 
-    both_passed = r1["passed"] and r2["passed"]
+    consistent, consistency_reason = await judge_consistency(
+        case.question, r1["answer"], r2["answer"]
+    )
+    if not consistent:
+        print(f"  [INCONSISTENT] {case.id}: {consistency_reason}")
+
+    both_passed = r1["passed"] and r2["passed"] and consistent
+    extra = {"idempotency_passed": both_passed, "consistent": consistent, "consistency_reason": consistency_reason, "passed": both_passed}
     return [
-        {**r1, "id": f"{case.id}_run1", "idempotency_passed": both_passed},
-        {**r2, "id": f"{case.id}_run2", "idempotency_passed": both_passed},
+        {**r1, **extra, "id": f"{case.id}_run1"},
+        {**r2, **extra, "id": f"{case.id}_run2"},
     ]
 
 

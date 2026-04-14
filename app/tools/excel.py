@@ -85,7 +85,10 @@ TOOLS: list[dict] = [
             "description": (
                 "Ищет строки в листе по значению в столбце. "
                 "Укажи value для поиска подстроки (регистронезависимо), "
-                "или find_nulls=true чтобы найти пустые ячейки в столбце."
+                "или find_nulls=true чтобы найти пустые ячейки в столбце. "
+                "Для фильтрации по году или периоду используй date_from и/или date_to "
+                "(формат 'YYYY' или 'YYYY-MM-DD'). "
+                "Например, чтобы найти сделки за 2022 год: column='Дата ДДУ', date_from='2022', date_to='2022'."
             ),
             "parameters": {
                 "type": "object",
@@ -104,6 +107,14 @@ TOOLS: list[dict] = [
                         "type": "boolean",
                         "description": "Если true — вернуть строки где столбец пустой.",
                     },
+                    "date_from": {
+                        "type": "string",
+                        "description": "Начало диапазона дат. Формат: YYYY или YYYY-MM-DD. Например '2022' или '2022-01-01'.",
+                    },
+                    "date_to": {
+                        "type": "string",
+                        "description": "Конец диапазона дат. Формат: YYYY или YYYY-MM-DD. Например '2022' или '2022-12-31'.",
+                    },
                 },
                 "required": ["file_name", "sheet_name", "column"],
             },
@@ -115,7 +126,7 @@ TOOLS: list[dict] = [
 def _df_to_str(df: pl.DataFrame) -> str:
     if df.is_empty():
         return "(нет строк — результат пустой)"
-    return df.write_csv()
+    return f"[Всего строк: {len(df)}]\n" + df.write_csv()
 
 
 async def call_tool(name: str, arguments: dict) -> str:
@@ -155,6 +166,8 @@ async def call_tool(name: str, arguments: dict) -> str:
                 arguments["column"],
                 value=arguments.get("value"),
                 find_nulls=bool(arguments.get("find_nulls", False)),
+                date_from=arguments.get("date_from"),
+                date_to=arguments.get("date_to"),
             )
             return _df_to_str(df)
 

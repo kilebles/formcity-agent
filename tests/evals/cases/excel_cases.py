@@ -93,6 +93,24 @@ EXCEL_CASES: list[EvalCase] = [
         tags=["excel", "aggregation"],
     ),
     EvalCase(
+        id="excel_date_filter_01",
+        question="Сколько апартаментов продано в 2022 году в проекте Обводный 118?",
+        checks=[
+            "Ответ содержит число около 241 (допустимо ±10)",
+            "Ответ не говорит что данных нет",
+        ],
+        tags=["excel", "date_filter"],
+    ),
+    EvalCase(
+        id="excel_date_filter_idempotency_01",
+        question="Сколько апартаментов продано в 2022 году в проекте Обводный 118?",
+        checks=[
+            "Ответ содержит число около 241 (допустимо ±10)",
+            "Ответ не говорит что данных нет",
+        ],
+        tags=["excel", "date_filter", "idempotency"],
+    ),
+    EvalCase(
         id="excel_idempotency_01",
         question=(
             'Найди квартиру 04/03 в листе "Апартаменты (проект)" '
