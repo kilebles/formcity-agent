@@ -41,6 +41,10 @@ _SYSTEM_PROMPT = """Ты — внутренний ИИ-помощник комп
 - parse_project_site — получить информацию с официального сайта проекта (используй только если Excel не дал ответа)
 - search_web — поиск в интернете через Tavily (используй только если Excel и parse_project_site не дали ответа)
 
+ПОДСКАЗКИ ПО ПРОЕКТАМ:
+- "Well" или "Well Апарт-отель" без уточнения = проект на Обводном канале (уже открыт, сайт well-apart.ru)
+- "Well Московский" = строящийся проект в Московском районе СПб (сайт well-apart-msk.ru)
+
 ПОДСКАЗКИ ПО ДАННЫМ:
 - Продажи апартаментов (количество, даты сделок) — файлы "Сводная_*.xlsx", листы "Апартаменты (проект)", столбец "Дата ДДУ"
 - Для фильтрации по году используй search_in_sheet с date_from="YYYY" и date_to="YYYY"
@@ -72,7 +76,7 @@ async def ask(user_message: str) -> str:
             {"role": "user", "content": user_message},
         ]
 
-        for iteration in range(10):
+        for iteration in range(15):
             response = await _client.chat.completions.create(
                 model=settings.openai_model,
                 messages=messages,

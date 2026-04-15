@@ -27,15 +27,18 @@ async def judge_consistency(question: str, answer1: str, answer2: str) -> tuple[
         'Ответь JSON: {"passed": true или false, "reason": "краткое объяснение"}'
     )
 
-    response = await _client.chat.completions.create(
-        model=settings.openai_model,
-        messages=[
-            {"role": "system", "content": _JUDGE_SYSTEM},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0,
-        response_format={"type": "json_object"},
-    )
+    try:
+        response = await _client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": _JUDGE_SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        return False, f"Judge error: {exc}"
 
     raw = response.choices[0].message.content or "{}"
     data = json.loads(raw)
@@ -44,6 +47,9 @@ async def judge_consistency(question: str, answer1: str, answer2: str) -> tuple[
 
 async def judge(question: str, answer: str, checks: list[str]) -> tuple[bool, str]:
     """Оценивает ответ бота по списку критериев. Возвращает (passed, reason)."""
+    if answer.startswith("[ERROR]") or answer.startswith("[CRASH]") or "⚠️ Исчерпан лимит" in answer or "⚠️ Превышен лимит" in answer:
+        return False, f"Бот вернул ошибку: {answer[:100]}"
+
     numbered = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(checks))
     prompt = (
         f"Вопрос пользователя:\n{question}\n\n"
@@ -52,15 +58,18 @@ async def judge(question: str, answer: str, checks: list[str]) -> tuple[bool, st
         'Ответь JSON: {"passed": true или false, "reason": "краткое объяснение"}'
     )
 
-    response = await _client.chat.completions.create(
-        model=settings.openai_model,
-        messages=[
-            {"role": "system", "content": _JUDGE_SYSTEM},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0,
-        response_format={"type": "json_object"},
-    )
+    try:
+        response = await _client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": _JUDGE_SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
+    except Exception as exc:
+        return False, f"Judge error: {exc}"
 
     raw = response.choices[0].message.content or "{}"
     data = json.loads(raw)

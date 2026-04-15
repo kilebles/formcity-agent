@@ -8,8 +8,13 @@ from tavily import AsyncTavilyClient
 from app.config import settings
 
 PROJECT_SITES: dict[str, str] = {
-    "well": "https://well-apart.ru",
     "well московский": "https://well-apart-msk.ru",
+    "well-apart-msk": "https://well-apart-msk.ru",
+    "well обводный": "https://well-apart.ru",
+    "well-apart.ru": "https://well-apart.ru",
+    "well-apart": "https://well-apart.ru",
+    "обводный 118": "https://well-apart.ru",
+    "well": "https://well-apart.ru",
     "евгеньевский": "https://evg-spb.ru",
     "king & sons": "https://kingsons.ru",
     "stories": "https://storiesmoscow.ru",
@@ -39,9 +44,13 @@ async def fetch_page(url: str) -> str:
 async def parse_project_site(project: str) -> str:
     """Возвращает текстовое содержимое сайта проекта по его названию."""
     key = project.lower().strip()
+    sorted_sites = sorted(PROJECT_SITES.items(), key=lambda x: -len(x[0]))
     url = next(
-        (v for k, v in sorted(PROJECT_SITES.items(), key=lambda x: -len(x[0])) if k in key or key in k),
-        PROJECT_SITES["formcity"],
+        (v for k, v in sorted_sites if k in key),
+        next(
+            (v for k, v in sorted_sites if key in k),
+            PROJECT_SITES["formcity"],
+        ),
     )
     logger.info("Parsing site for project '{project}': {url}", project=project, url=url)
     try:

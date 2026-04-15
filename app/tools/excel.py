@@ -123,10 +123,21 @@ TOOLS: list[dict] = [
 ]
 
 
+_MAX_ROWS = 200
+_MAX_CHARS = 80_000
+
+
 def _df_to_str(df: pl.DataFrame) -> str:
     if df.is_empty():
         return "(нет строк — результат пустой)"
-    return f"[Всего строк: {len(df)}]\n" + df.write_csv()
+    total = len(df)
+    truncated = total > _MAX_ROWS
+    out_df = df.head(_MAX_ROWS) if truncated else df
+    csv = out_df.write_csv()
+    if len(csv) > _MAX_CHARS:
+        csv = csv[:_MAX_CHARS] + "\n[...обрезано]"
+    header = f"[Всего строк: {total}]" + (f" [Показаны первые {_MAX_ROWS}]" if truncated else "")
+    return f"{header}\n{csv}"
 
 
 async def call_tool(name: str, arguments: dict) -> str:

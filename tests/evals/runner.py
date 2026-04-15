@@ -95,10 +95,23 @@ async def main(tags: list[str], id_: str | None) -> None:
     results: list[dict] = []
 
     for case in cases:
-        if "idempotency" in case.tags:
-            results.extend(await _run_idempotency(case))
-        else:
-            results.append(await _run_case(case))
+        try:
+            if "idempotency" in case.tags:
+                results.extend(await _run_idempotency(case))
+            else:
+                results.append(await _run_case(case))
+        except Exception as exc:
+            print(f"  [CRASH] {case.id}: {exc}")
+            results.append({
+                "id": case.id,
+                "tags": case.tags,
+                "question": case.question,
+                "answer": f"[CRASH] {exc}",
+                "checks": case.checks,
+                "passed": False,
+                "reason": f"Runner exception: {exc}",
+                "duration_ms": 0,
+            })
 
     passed = sum(1 for r in results if r["passed"])
     total = len(results)
