@@ -4,6 +4,7 @@ from aiogram.enums import ParseMode
 from loguru import logger
 
 from app.bot.commands import BOT_COMMANDS
+from app.bot.middleware import AllowlistMiddleware
 from app.bot.router import main_router
 from app.config import settings
 
@@ -30,6 +31,7 @@ async def main() -> None:
     )
 
     dp = Dispatcher()
+    dp.message.middleware(AllowlistMiddleware())
     dp.include_router(main_router)
 
     dp.startup.register(on_startup)

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     openai_key: SecretStr
     openai_model: str = "gpt-4o"
     tavily_key: SecretStr | None = None
+    allowed_usernames: list[str] = []
 
 
 settings = Settings()
