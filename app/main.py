@@ -2,7 +2,6 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
-from aiohttp_socks import ProxyConnector
 from loguru import logger
 
 from app.bot.commands import BOT_COMMANDS
@@ -30,7 +29,7 @@ async def main() -> None:
     if settings.proxy:
         host, port, user, password = settings.proxy.split(":")
         proxy_url = f"socks5://{user}:{password}@{host}:{port}"
-        session = AiohttpSession(connector=ProxyConnector.from_url(proxy_url))
+        session = AiohttpSession(proxy=proxy_url)
 
     bot = Bot(
         token=settings.bot_token.get_secret_value(),
