@@ -28,7 +28,7 @@ async def main() -> None:
     session = None
     if settings.proxy:
         host, port, user, password = settings.proxy.split(":")
-        proxy_url = f"socks5://{user}:{password}@{host}:{port}"
+        proxy_url = f"http://{user}:{password}@{host}:{port}"
         session = AiohttpSession(proxy=proxy_url)
 
     bot = Bot(
