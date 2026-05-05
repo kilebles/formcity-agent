@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 from loguru import logger
 from openai import AsyncOpenAI
 
@@ -19,7 +20,10 @@ async def call_tool(name: str, arguments: dict) -> str:
         return await excel_tools.call_tool(name, arguments)
     return await web_tools.call_tool(name, arguments)
 
-_client = AsyncOpenAI(api_key=settings.openai_key.get_secret_value())
+_client = AsyncOpenAI(
+    api_key=settings.openai_key.get_secret_value(),
+    http_client=httpx.AsyncClient(proxy=settings.proxy) if settings.proxy else None,
+)
 
 _SYSTEM_PROMPT = """Ты — внутренний ИИ-помощник компании Formula City.
 
@@ -139,4 +143,6 @@ async def ask(user_message: str) -> str:
             return "⚠️ Исчерпан лимит OpenAI API. Пополните баланс на platform.openai.com."
         if "rate_limit" in msg.lower():
             return "⚠️ Превышен лимит запросов к OpenAI. Подождите немного и попробуйте снова."
+        if "unsupported_country" in msg or "request_forbidden" in msg:
+            return "⚠️ OpenAI недоступен с текущего IP. Проверьте настройки прокси."
         return "Произошла ошибка при обработке запроса. Попробуйте ещё раз."
