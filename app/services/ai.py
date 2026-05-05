@@ -20,9 +20,16 @@ async def call_tool(name: str, arguments: dict) -> str:
         return await excel_tools.call_tool(name, arguments)
     return await web_tools.call_tool(name, arguments)
 
+def _build_proxy_url() -> str | None:
+    if not settings.proxy:
+        return None
+    host, port, user, password = settings.proxy.split(":")
+    return f"http://{user}:{password}@{host}:{port}"
+
+
 _client = AsyncOpenAI(
     api_key=settings.openai_key.get_secret_value(),
-    http_client=httpx.AsyncClient(proxy=settings.proxy) if settings.proxy else None,
+    http_client=httpx.AsyncClient(proxy=_build_proxy_url()) if settings.proxy else None,
 )
 
 _SYSTEM_PROMPT = """Ты — внутренний ИИ-помощник компании Formula City.
