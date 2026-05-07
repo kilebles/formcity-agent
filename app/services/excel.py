@@ -197,6 +197,10 @@ def _find_column(df: pl.DataFrame, name: str) -> str | None:
 def describe_sheet(file_name: str, sheet_name: str) -> dict:
     """Возвращает мета-информацию о листе для LLM-контекста."""
     df = load_sheet(file_name, sheet_name)
+    sample_values: dict[str, list] = {}
+    for col in df.columns:
+        vals = df[col].drop_nulls().cast(pl.Utf8).unique().sort().head(5).to_list()
+        sample_values[col] = vals
     return {
         "file": file_name,
         "sheet": sheet_name,
@@ -204,4 +208,63 @@ def describe_sheet(file_name: str, sheet_name: str) -> dict:
         "columns": df.columns,
         "dtypes": {col: str(dtype) for col, dtype in zip(df.columns, df.dtypes)},
         "null_counts": {col: df[col].null_count() for col in df.columns},
+        "sample_values": sample_values,
     }
+
+
+def count_values(
+    file_name: str,
+    sheet_name: str,
+    column: str,
+    *,
+    distinct: bool = False,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    """
+    Считает значения в столбце.
+
+    - distinct=True → количество уникальных ненулевых значений
+    - distinct=False (default) → количество ненулевых строк
+    - date_from / date_to → применить фильтр по дате перед подсчётом
+    """
+    df = load_sheet(file_name, sheet_name)
+
+    col_match = _find_column(df, column)
+    if col_match is None:
+        available = ", ".join(df.columns)
+        raise ValueError(
+            f"Столбец '{column}' не найден в {file_name}/{sheet_name}. "
+            f"Доступные: {available}"
+        )
+
+    if date_from is not None or date_to is not None:
+        df = _filter_by_date(df, col_match, date_from, date_to)
+
+    non_null = df[col_match].drop_nulls()
+    total = len(df)
+    non_null_count = len(non_null)
+
+    result: dict = {
+        "file": file_name,
+        "sheet": sheet_name,
+        "column": col_match,
+        "total_rows": total,
+        "non_null_count": non_null_count,
+    }
+
+    if distinct:
+        result["distinct_count"] = non_null.n_unique()
+
+    if date_from or date_to:
+        result["date_from"] = date_from
+        result["date_to"] = date_to
+
+    full_col = load_sheet(file_name, sheet_name)[col_match]
+    if full_col.dtype not in (pl.Utf8, pl.String):
+        non_null_full = full_col.drop_nulls()
+        if len(non_null_full) > 0:
+            result["data_min_date"] = str(non_null_full.min())
+            result["data_max_date"] = str(non_null_full.max())
+
+    return result

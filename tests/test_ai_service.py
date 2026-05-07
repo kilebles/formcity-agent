@@ -165,7 +165,8 @@ class TestAskIterationLimit:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    async def test_api_called_at_most_10_times(self):
+    async def test_api_called_at_most_max_iterations(self):
+        from app.services.ai import _MAX_ITERATIONS
         infinite_tool_response = _make_tool_call_response("list_files", "{}")
 
         with (
@@ -177,7 +178,7 @@ class TestAskIterationLimit:
             )
             await ask("бесконечный вопрос")
 
-        assert mock_client.chat.completions.create.call_count <= 10
+        assert mock_client.chat.completions.create.call_count <= _MAX_ITERATIONS
 
 
 class TestAskMessageStructure:
@@ -209,7 +210,8 @@ class TestAskMessageStructure:
             await ask("вопрос")
 
         assert captured["tools"] is not None
-        assert len(captured["tools"]) == 5
+        from app.services.ai import TOOLS
+        assert len(captured["tools"]) == len(TOOLS)
 
     async def test_correct_model_used(self):
         captured = {}

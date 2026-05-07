@@ -120,6 +120,45 @@ TOOLS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "count_values",
+            "description": (
+                "Считает количество значений в столбце. "
+                "Используй для вопросов 'сколько продано', 'сколько апартаментов', "
+                "'сколько уникальных' и подобных агрегаций. "
+                "distinct=true — количество уникальных значений (например, уникальных номеров апартаментов). "
+                "distinct=false (по умолчанию) — количество непустых строк. "
+                "date_from/date_to — опциональный фильтр по диапазону дат (формат YYYY или YYYY-MM-DD). "
+                "Если период не указан пользователем — НЕ передавай date_from/date_to."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_name": {"type": "string"},
+                    "sheet_name": {"type": "string"},
+                    "column": {
+                        "type": "string",
+                        "description": "Имя столбца для подсчёта (используй describe_sheet чтобы узнать точные названия).",
+                    },
+                    "distinct": {
+                        "type": "boolean",
+                        "description": "Если true — считать уникальные значения. Используй для подсчёта уникальных объектов (апартаментов, клиентов и т.п.).",
+                    },
+                    "date_from": {
+                        "type": "string",
+                        "description": "Начало диапазона дат. Формат: YYYY или YYYY-MM-DD. Передавай ТОЛЬКО если пользователь указал период.",
+                    },
+                    "date_to": {
+                        "type": "string",
+                        "description": "Конец диапазона дат. Формат: YYYY или YYYY-MM-DD. Передавай ТОЛЬКО если пользователь указал период.",
+                    },
+                },
+                "required": ["file_name", "sheet_name", "column"],
+            },
+        },
+    },
 ]
 
 
@@ -181,6 +220,18 @@ async def call_tool(name: str, arguments: dict) -> str:
                 date_to=arguments.get("date_to"),
             )
             return _df_to_str(df)
+
+        elif name == "count_values":
+            result = await asyncio.to_thread(
+                excel_svc.count_values,
+                arguments["file_name"],
+                arguments["sheet_name"],
+                arguments["column"],
+                distinct=bool(arguments.get("distinct", False)),
+                date_from=arguments.get("date_from"),
+                date_to=arguments.get("date_to"),
+            )
+            return json.dumps(result, ensure_ascii=False, default=str)
 
         else:
             return f"Неизвестный инструмент: {name}"

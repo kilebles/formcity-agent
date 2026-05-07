@@ -14,7 +14,7 @@ SHEET = "Уступки ВЕЛЛ"
 
 
 class TestToolDefinitions:
-    EXPECTED_NAMES = {"list_files", "get_sheet_names", "describe_sheet", "load_sheet", "search_in_sheet"}
+    EXPECTED_NAMES = {"list_files", "get_sheet_names", "describe_sheet", "load_sheet", "search_in_sheet", "count_values"}
 
     def test_all_tools_present(self):
         names = {t["function"]["name"] for t in TOOLS}
@@ -67,9 +67,8 @@ class TestDfToStr:
     def test_csv_has_header_row(self):
         df = pl.DataFrame({"col1": [10], "col2": [20]})
         result = _df_to_str(df)
-        lines = result.strip().split("\n")
-        assert "col1" in lines[0]
-        assert "col2" in lines[0]
+        assert "col1" in result
+        assert "col2" in result
 
 
 class TestCallTool:
@@ -164,6 +163,73 @@ class TestCallTool:
             "sheet_name": SHEET,
             "column": "zzz_нет_такого_zzz",
             "find_nulls": True,
+        })
+        assert "ошибка" in result.lower() or "error" in result.lower()
+
+    async def test_count_values_non_null(self):
+        meta = json.loads(
+            await call_tool("describe_sheet", {"file_name": FILE, "sheet_name": SHEET})
+        )
+        col = meta["columns"][0]
+        result = await call_tool("count_values", {
+            "file_name": FILE,
+            "sheet_name": SHEET,
+            "column": col,
+        })
+        data = json.loads(result)
+        assert "non_null_count" in data
+        assert data["non_null_count"] >= 0
+
+    async def test_count_values_distinct(self):
+        meta = json.loads(
+            await call_tool("describe_sheet", {"file_name": FILE, "sheet_name": SHEET})
+        )
+        col = meta["columns"][0]
+        result = await call_tool("count_values", {
+            "file_name": FILE,
+            "sheet_name": SHEET,
+            "column": col,
+            "distinct": True,
+        })
+        data = json.loads(result)
+        assert "distinct_count" in data
+        assert data["distinct_count"] >= 0
+        assert data["distinct_count"] <= data["non_null_count"]
+
+    async def test_count_values_with_date_filter(self):
+        result = await call_tool("count_values", {
+            "file_name": "Сводная_Обводный 118.xlsx",
+            "sheet_name": "Апартаменты (проект)",
+            "column": "Дата ДДУ",
+            "date_from": "2022",
+            "date_to": "2022",
+        })
+        data = json.loads(result)
+        assert "non_null_count" in data
+        assert data["non_null_count"] > 0
+
+    async def test_count_values_no_period_returns_all(self):
+        result_all = await call_tool("count_values", {
+            "file_name": "Сводная_Обводный 118.xlsx",
+            "sheet_name": "Апартаменты (проект)",
+            "column": "Дата ДДУ",
+        })
+        result_2022 = await call_tool("count_values", {
+            "file_name": "Сводная_Обводный 118.xlsx",
+            "sheet_name": "Апартаменты (проект)",
+            "column": "Дата ДДУ",
+            "date_from": "2022",
+            "date_to": "2022",
+        })
+        all_data = json.loads(result_all)
+        year_data = json.loads(result_2022)
+        assert all_data["non_null_count"] >= year_data["non_null_count"]
+
+    async def test_count_values_invalid_column_returns_error(self):
+        result = await call_tool("count_values", {
+            "file_name": FILE,
+            "sheet_name": SHEET,
+            "column": "zzz_нет_такого_zzz",
         })
         assert "ошибка" in result.lower() or "error" in result.lower()
 

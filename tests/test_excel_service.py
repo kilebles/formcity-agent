@@ -10,6 +10,7 @@ from app.services.excel import (
     _deduplicate_columns,
     _find_column,
     _normalize_col,
+    count_values,
     describe_sheet,
     get_sheet_names,
     list_files,
@@ -140,6 +141,19 @@ class TestDescribeSheet:
         for col, count in meta["null_counts"].items():
             assert count >= 0
 
+    def test_sample_values_present(self):
+        meta = describe_sheet(FILE, SHEET)
+        assert "sample_values" in meta
+        assert isinstance(meta["sample_values"], dict)
+        for col in meta["columns"]:
+            assert col in meta["sample_values"]
+            assert isinstance(meta["sample_values"][col], list)
+
+    def test_sample_values_at_most_5(self):
+        meta = describe_sheet(FILE, SHEET)
+        for col, vals in meta["sample_values"].items():
+            assert len(vals) <= 5
+
     def test_idempotent(self):
         m1 = describe_sheet(FILE, SHEET)
         m2 = describe_sheet(FILE, SHEET)
@@ -213,6 +227,74 @@ class TestSearchInSheet:
     def test_invalid_column_raises(self):
         with pytest.raises(ValueError, match="не найден"):
             search_in_sheet(FILE, SHEET, "zzz_нет_такого_zzz")
+
+
+class TestCountValues:
+    SALES_FILE = "Сводная_Обводный 118.xlsx"
+    SALES_SHEET = "Апартаменты (проект)"
+    SALES_COL = "Дата ДДУ"
+
+    def test_returns_dict(self):
+        df = load_sheet(FILE, SHEET)
+        col = df.columns[0]
+        result = count_values(FILE, SHEET, col)
+        assert isinstance(result, dict)
+        assert "non_null_count" in result
+        assert "total_rows" in result
+
+    def test_non_null_count_leq_total_rows(self):
+        df = load_sheet(FILE, SHEET)
+        col = df.columns[0]
+        result = count_values(FILE, SHEET, col)
+        assert result["non_null_count"] <= result["total_rows"]
+
+    def test_distinct_count_leq_non_null(self):
+        df = load_sheet(FILE, SHEET)
+        col = df.columns[0]
+        result = count_values(FILE, SHEET, col, distinct=True)
+        assert "distinct_count" in result
+        assert result["distinct_count"] <= result["non_null_count"]
+
+    def test_without_period_returns_all(self):
+        result_all = count_values(self.SALES_FILE, self.SALES_SHEET, self.SALES_COL)
+        result_2022 = count_values(
+            self.SALES_FILE, self.SALES_SHEET, self.SALES_COL,
+            date_from="2022", date_to="2022",
+        )
+        assert result_all["non_null_count"] >= result_2022["non_null_count"]
+
+    def test_2022_filter_returns_correct_count(self):
+        result = count_values(
+            self.SALES_FILE, self.SALES_SHEET, self.SALES_COL,
+            date_from="2022", date_to="2022",
+        )
+        assert 230 <= result["non_null_count"] <= 260
+
+    def test_dec_2025_obvodny_filter(self):
+        result = count_values(
+            self.SALES_FILE, self.SALES_SHEET, self.SALES_COL,
+            date_from="2025-12-01", date_to="2025-12-31",
+        )
+        assert result["non_null_count"] >= 0
+
+    def test_date_range_in_result(self):
+        result = count_values(
+            self.SALES_FILE, self.SALES_SHEET, self.SALES_COL,
+            date_from="2022", date_to="2022",
+        )
+        assert result.get("date_from") == "2022"
+        assert result.get("date_to") == "2022"
+
+    def test_invalid_column_raises(self):
+        with pytest.raises(ValueError, match="не найден"):
+            count_values(FILE, SHEET, "zzz_нет_такого_zzz")
+
+    def test_idempotent(self):
+        df = load_sheet(FILE, SHEET)
+        col = df.columns[0]
+        r1 = count_values(FILE, SHEET, col)
+        r2 = count_values(FILE, SHEET, col)
+        assert r1 == r2
 
 
 class TestSheetsSchemas:

@@ -1,7 +1,6 @@
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
-from aiogram.enums import ParseMode
 from loguru import logger
 
 from app.bot.commands import BOT_COMMANDS
@@ -33,7 +32,7 @@ async def main() -> None:
 
     bot = Bot(
         token=settings.bot_token.get_secret_value(),
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        default=DefaultBotProperties(parse_mode=None),
         session=session,
     )
 
