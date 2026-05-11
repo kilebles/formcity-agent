@@ -1,0 +1,20 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - redis
+    volumes:
+      - ./common:/app/common
+      - ./logs:/app/logs
+
+volumes:
+  redis_data:

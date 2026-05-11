@@ -8,6 +8,7 @@ from aiogram.types import Message
 from loguru import logger
 
 from app.services.ai import ask
+from app.services.history import append_history, get_history
 
 router = Router(name="message")
 
@@ -34,14 +35,17 @@ async def handle_message(message: Message) -> None:
         preview=text[:80],
     )
 
+    history = await get_history(user_id)
+
     stop_event = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop_event))
 
     try:
-        reply = await ask(text)
+        reply = await ask(text, history)
     finally:
         stop_event.set()
         typing_task.cancel()
 
+    await append_history(user_id, text, reply)
     await message.answer(reply)
     logger.debug("Replied to {user_id}, len={n}", user_id=user_id, n=len(reply))

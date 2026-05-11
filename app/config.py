@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     tavily_key: SecretStr | None = None
     allowed_usernames: list[str] = []
     proxy: str | None = None
+    redis_url: str = "redis://redis:6379"
 
 
 settings = Settings()

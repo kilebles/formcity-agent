@@ -101,12 +101,13 @@ _MAX_ITERATIONS = 15
 _ANONYMIZED_TOOLS = {"load_sheet", "search_in_sheet"}
 
 
-async def ask(user_message: str) -> str:
+async def ask(user_message: str, history: list[dict] | None = None) -> str:
     """Запускает agentic loop для вопроса пользователя и возвращает ответ."""
     try:
         anonymizer = Anonymizer()
         messages: list[dict] = [
             {"role": "system", "content": _SYSTEM_PROMPT},
+            *(history or []),
             {"role": "user", "content": user_message},
         ]
 

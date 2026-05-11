@@ -15,6 +15,7 @@ dependencies = [
     "openpyxl>=3.1.5",
     "polars>=1.39.3",
     "pydantic-settings>=2.13.1",
+    "redis>=7.4.0",
     "tavily-python>=0.7.23",
 ]
 
