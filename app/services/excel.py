@@ -212,6 +212,59 @@ def describe_sheet(file_name: str, sheet_name: str) -> dict:
     }
 
 
+def sum_column(
+    file_name: str,
+    sheet_name: str,
+    column: str,
+    *,
+    date_column: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    """
+    Суммирует числовой столбец с опциональной фильтрацией по дате.
+
+    - column — числовой столбец для суммирования (например, площадь)
+    - date_column — столбец с датой для фильтрации
+    - date_from / date_to — диапазон дат (YYYY или YYYY-MM-DD)
+    """
+    df = load_sheet(file_name, sheet_name)
+
+    col_match = _find_column(df, column)
+    if col_match is None:
+        available = ", ".join(df.columns)
+        raise ValueError(
+            f"Столбец '{column}' не найден в {file_name}/{sheet_name}. "
+            f"Доступные: {available}"
+        )
+
+    if (date_from is not None or date_to is not None) and date_column is not None:
+        date_col_match = _find_column(df, date_column)
+        if date_col_match is None:
+            available = ", ".join(df.columns)
+            raise ValueError(
+                f"Столбец даты '{date_column}' не найден в {file_name}/{sheet_name}. "
+                f"Доступные: {available}"
+            )
+        df = _filter_by_date(df, date_col_match, date_from, date_to)
+
+    series = df[col_match].drop_nulls().cast(pl.Float64)
+    total = float(series.sum()) if len(series) > 0 else 0.0
+
+    result: dict = {
+        "file": file_name,
+        "sheet": sheet_name,
+        "column": col_match,
+        "sum": round(total, 2),
+        "row_count": len(series),
+    }
+    if date_from or date_to:
+        result["date_from"] = date_from
+        result["date_to"] = date_to
+
+    return result
+
+
 def count_values(
     file_name: str,
     sheet_name: str,

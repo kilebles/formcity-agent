@@ -123,6 +123,43 @@ TOOLS: list[dict] = [
     {
         "type": "function",
         "function": {
+            "name": "sum_column",
+            "description": (
+                "Суммирует числовой столбец листа (например, площадь в кв.м., сумму сделки). "
+                "Используй когда пользователь спрашивает 'сколько квадратных метров', "
+                "'какая общая площадь', 'сумма продаж' и т.п. "
+                "date_column — столбец с датой для фильтрации (например, 'Дата ДДУ'). "
+                "date_from/date_to — опциональный фильтр по диапазону дат (формат YYYY или YYYY-MM-DD)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_name": {"type": "string"},
+                    "sheet_name": {"type": "string"},
+                    "column": {
+                        "type": "string",
+                        "description": "Числовой столбец для суммирования (используй describe_sheet чтобы узнать точные названия).",
+                    },
+                    "date_column": {
+                        "type": "string",
+                        "description": "Столбец с датой для фильтрации (например, 'Дата ДДУ'). Обязателен если указываешь date_from/date_to.",
+                    },
+                    "date_from": {
+                        "type": "string",
+                        "description": "Начало диапазона дат. Формат: YYYY или YYYY-MM-DD.",
+                    },
+                    "date_to": {
+                        "type": "string",
+                        "description": "Конец диапазона дат. Формат: YYYY или YYYY-MM-DD.",
+                    },
+                },
+                "required": ["file_name", "sheet_name", "column"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "count_values",
             "description": (
                 "Считает количество значений в столбце. "
@@ -220,6 +257,18 @@ async def call_tool(name: str, arguments: dict) -> str:
                 date_to=arguments.get("date_to"),
             )
             return _df_to_str(df)
+
+        elif name == "sum_column":
+            result = await asyncio.to_thread(
+                excel_svc.sum_column,
+                arguments["file_name"],
+                arguments["sheet_name"],
+                arguments["column"],
+                date_column=arguments.get("date_column"),
+                date_from=arguments.get("date_from"),
+                date_to=arguments.get("date_to"),
+            )
+            return json.dumps(result, ensure_ascii=False, default=str)
 
         elif name == "count_values":
             result = await asyncio.to_thread(
