@@ -156,7 +156,8 @@ def _filter_by_date(
         s = s.strip()
         if len(s) == 4:
             return datetime(int(s), 12, 31, 23, 59, 59) if end else datetime(int(s), 1, 1)
-        return datetime.strptime(s, "%Y-%m-%d")
+        dt = datetime.strptime(s, "%Y-%m-%d")
+        return dt.replace(hour=23, minute=59, second=59) if end else dt
 
     dtype = df[col].dtype
 
