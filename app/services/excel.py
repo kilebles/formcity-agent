@@ -161,9 +161,9 @@ def _filter_by_date(
     dtype = df[col].dtype
 
     if dtype in (pl.Utf8, pl.String):
-        work = df.with_columns(
-            pl.col(col).str.to_datetime(format="%Y-%m-%d", strict=False).alias("__date_col__")
-        )
+        parsed = pl.col(col).str.to_datetime(format="%Y-%m-%d %H:%M:%S", strict=False)
+        parsed = parsed.fill_null(pl.col(col).str.to_datetime(format="%Y-%m-%d", strict=False))
+        work = df.with_columns(parsed.alias("__date_col__"))
         filter_col = "__date_col__"
     else:
         work = df
