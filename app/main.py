@@ -26,7 +26,16 @@ async def main() -> None:
 
     session = None
     if settings.proxy:
-        proxy_url = settings.proxy if "://" in settings.proxy else f"http://{settings.proxy}"
+        proxy = settings.proxy
+        if "://" in proxy:
+            proxy_url = proxy
+        else:
+            parts = proxy.split(":")
+            if len(parts) == 4:
+                host, port, user, password = parts
+                proxy_url = f"http://{user}:{password}@{host}:{port}"
+            else:
+                proxy_url = f"http://{proxy}"
         session = AiohttpSession(proxy=proxy_url)
 
     bot = Bot(

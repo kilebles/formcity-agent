@@ -24,7 +24,13 @@ def _build_proxy_url() -> str | None:
     if not settings.proxy:
         return None
     proxy = settings.proxy
-    return proxy if "://" in proxy else f"http://{proxy}"
+    if "://" in proxy:
+        return proxy
+    parts = proxy.split(":")
+    if len(parts) == 4:
+        host, port, user, password = parts
+        return f"http://{user}:{password}@{host}:{port}"
+    return f"http://{proxy}"
 
 
 _client = AsyncOpenAI(
