@@ -88,7 +88,9 @@ TOOLS: list[dict] = [
                 "или find_nulls=true чтобы найти пустые ячейки в столбце. "
                 "Для фильтрации по году или периоду используй date_from и/или date_to "
                 "(формат 'YYYY' или 'YYYY-MM-DD'). "
-                "Например, чтобы найти сделки за 2022 год: column='Дата ДДУ', date_from='2022', date_to='2022'."
+                "Параметры value и date_from/date_to можно комбинировать: например искать по ФИО клиента и одновременно фильтровать по году сделки. "
+                "Если фильтр по дате нужно применить к другому столбцу (не column), укажи date_column. "
+                "Например: column='ФИО Клиента', value='Иванов', date_column='Дата ДДУ', date_from='2024', date_to='2024'."
             ),
             "parameters": {
                 "type": "object",
@@ -97,15 +99,19 @@ TOOLS: list[dict] = [
                     "sheet_name": {"type": "string"},
                     "column": {
                         "type": "string",
-                        "description": "Имя столбца (используй describe_sheet чтобы узнать точные названия).",
+                        "description": "Имя столбца для поиска по value или find_nulls (используй describe_sheet чтобы узнать точные названия).",
                     },
                     "value": {
                         "type": "string",
-                        "description": "Подстрока для поиска. Не указывай если используешь find_nulls.",
+                        "description": "Подстрока для поиска в column. Можно комбинировать с date_from/date_to.",
                     },
                     "find_nulls": {
                         "type": "boolean",
                         "description": "Если true — вернуть строки где столбец пустой.",
+                    },
+                    "date_column": {
+                        "type": "string",
+                        "description": "Столбец с датой для фильтрации, если он отличается от column. Например 'Дата ДДУ' или 'Дата Договора уступки'.",
                     },
                     "date_from": {
                         "type": "string",
@@ -167,7 +173,8 @@ TOOLS: list[dict] = [
                 "'сколько уникальных' и подобных агрегаций. "
                 "distinct=true — количество уникальных значений (например, уникальных номеров апартаментов). "
                 "distinct=false (по умолчанию) — количество непустых строк. "
-                "date_from/date_to — опциональный фильтр по диапазону дат (формат YYYY или YYYY-MM-DD). "
+                "date_from/date_to — опциональный фильтр по диапазону дат (формат YYYY или YYYY-MM-DD); "
+                "при использовании ОБЯЗАТЕЛЬНО передавай date_column — столбец с датой. "
                 "Если период не указан пользователем — НЕ передавай date_from/date_to."
             ),
             "parameters": {
@@ -182,6 +189,10 @@ TOOLS: list[dict] = [
                     "distinct": {
                         "type": "boolean",
                         "description": "Если true — считать уникальные значения. Используй для подсчёта уникальных объектов (апартаментов, клиентов и т.п.).",
+                    },
+                    "date_column": {
+                        "type": "string",
+                        "description": "Столбец с датой для фильтрации (например, 'Дата ДДУ'). Обязателен если указываешь date_from/date_to.",
                     },
                     "date_from": {
                         "type": "string",
@@ -255,6 +266,7 @@ async def call_tool(name: str, arguments: dict) -> str:
                 find_nulls=bool(arguments.get("find_nulls", False)),
                 date_from=arguments.get("date_from"),
                 date_to=arguments.get("date_to"),
+                date_column=arguments.get("date_column"),
             )
             return _df_to_str(df)
 
@@ -279,6 +291,7 @@ async def call_tool(name: str, arguments: dict) -> str:
                 distinct=bool(arguments.get("distinct", False)),
                 date_from=arguments.get("date_from"),
                 date_to=arguments.get("date_to"),
+                date_column=arguments.get("date_column"),
             )
             return json.dumps(result, ensure_ascii=False, default=str)
 

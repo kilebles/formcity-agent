@@ -93,6 +93,7 @@ def search_in_sheet(
     find_nulls: bool = False,
     date_from: str | None = None,
     date_to: str | None = None,
+    date_column: str | None = None,
 ) -> pl.DataFrame:
     """
     Поиск в конкретном листе.
@@ -100,6 +101,7 @@ def search_in_sheet(
     - find_nulls=True → строки где column пустой
     - value=... → строки где column содержит value (регистронезависимо)
     - date_from / date_to → фильтр по диапазону дат (формат YYYY-MM-DD или YYYY)
+    - date_column → отдельный столбец с датой для фильтрации (если отличается от column)
     """
     df = load_sheet(file_name, sheet_name)
 
@@ -119,26 +121,34 @@ def search_in_sheet(
         )
         return result
 
-    if date_from is not None or date_to is not None:
-        result = _filter_by_date(df, col_match, date_from, date_to)
-        logger.info(
-            "Date filter [{from_}..{to}] in '{col}' of {file}/{sheet}: {n} rows",
-            from_=date_from, to=date_to, col=col_match,
-            file=file_name, sheet=sheet_name, n=len(result),
-        )
-        return result
-
     if value is not None:
-        result = df.filter(
+        df = df.filter(
             pl.col(col_match).cast(pl.Utf8).str.to_lowercase().str.contains(
                 value.lower(), literal=True
             )
         )
         logger.info(
             "Search '{val}' in '{col}' of {file}/{sheet}: {n} rows",
-            val=value, col=col_match, file=file_name, sheet=sheet_name, n=len(result),
+            val=value, col=col_match, file=file_name, sheet=sheet_name, n=len(df),
         )
-        return result
+
+    if date_from is not None or date_to is not None:
+        if date_column is not None:
+            date_col_match = _find_column(df, date_column)
+            if date_col_match is None:
+                available = ", ".join(df.columns)
+                raise ValueError(
+                    f"Столбец даты '{date_column}' не найден в {file_name}/{sheet_name}. "
+                    f"Доступные: {available}"
+                )
+        else:
+            date_col_match = col_match
+        df = _filter_by_date(df, date_col_match, date_from, date_to)
+        logger.info(
+            "Date filter [{from_}..{to}] in '{col}' of {file}/{sheet}: {n} rows",
+            from_=date_from, to=date_to, col=date_col_match,
+            file=file_name, sheet=sheet_name, n=len(df),
+        )
 
     return df
 
@@ -164,6 +174,7 @@ def _filter_by_date(
     if dtype in (pl.Utf8, pl.String):
         parsed = pl.col(col).str.to_datetime(format="%Y-%m-%d %H:%M:%S", strict=False)
         parsed = parsed.fill_null(pl.col(col).str.to_datetime(format="%Y-%m-%d", strict=False))
+        parsed = parsed.fill_null(pl.col(col).str.to_datetime(format="%d.%m.%Y", strict=False))
         work = df.with_columns(parsed.alias("__date_col__"))
         filter_col = "__date_col__"
     else:
@@ -239,13 +250,19 @@ def sum_column(
             f"Доступные: {available}"
         )
 
-    if (date_from is not None or date_to is not None) and date_column is not None:
-        date_col_match = _find_column(df, date_column)
-        if date_col_match is None:
-            available = ", ".join(df.columns)
+    if date_from is not None or date_to is not None:
+        if date_column is not None:
+            date_col_match = _find_column(df, date_column)
+            if date_col_match is None:
+                available = ", ".join(df.columns)
+                raise ValueError(
+                    f"Столбец даты '{date_column}' не найден в {file_name}/{sheet_name}. "
+                    f"Доступные: {available}"
+                )
+        else:
             raise ValueError(
-                f"Столбец даты '{date_column}' не найден в {file_name}/{sheet_name}. "
-                f"Доступные: {available}"
+                "Для фильтрации по дате необходимо указать date_column. "
+                f"Доступные столбцы: {', '.join(df.columns)}"
             )
         df = _filter_by_date(df, date_col_match, date_from, date_to)
 
@@ -274,6 +291,7 @@ def count_values(
     distinct: bool = False,
     date_from: str | None = None,
     date_to: str | None = None,
+    date_column: str | None = None,
 ) -> dict:
     """
     Считает значения в столбце.
@@ -281,6 +299,7 @@ def count_values(
     - distinct=True → количество уникальных ненулевых значений
     - distinct=False (default) → количество ненулевых строк
     - date_from / date_to → применить фильтр по дате перед подсчётом
+    - date_column → столбец с датой для фильтрации (если отличается от column)
     """
     df = load_sheet(file_name, sheet_name)
 
@@ -293,7 +312,17 @@ def count_values(
         )
 
     if date_from is not None or date_to is not None:
-        df = _filter_by_date(df, col_match, date_from, date_to)
+        if date_column is not None:
+            date_col_match = _find_column(df, date_column)
+            if date_col_match is None:
+                available = ", ".join(df.columns)
+                raise ValueError(
+                    f"Столбец даты '{date_column}' не найден в {file_name}/{sheet_name}. "
+                    f"Доступные: {available}"
+                )
+        else:
+            date_col_match = col_match
+        df = _filter_by_date(df, date_col_match, date_from, date_to)
 
     non_null = df[col_match].drop_nulls()
     total = len(df)
