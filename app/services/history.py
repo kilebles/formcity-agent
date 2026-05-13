@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 
 from app.config import settings
 
-_MAX_PAIRS = 10
+_MAX_PAIRS = 5
 _TTL_SECONDS = 60 * 60 * 24 * 7  # 7 дней
 
 _redis = Redis.from_url(settings.redis_url, decode_responses=True)

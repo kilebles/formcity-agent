@@ -37,6 +37,9 @@ SHEET_SCHEMAS: dict[str, dict[str, int]] = {
         "Отклонения": 2,
         "Отказы": 0,
     },
+    "Остатки в продаже_28.02.2026.xlsx": {
+        "Остатки в продаже": 4,
+    },
 }
 
 DASHBOARD_SHEETS: set[tuple[str, str]] = {
