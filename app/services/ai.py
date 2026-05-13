@@ -41,6 +41,7 @@ _SYSTEM_PROMPT = """Ты — внутренний ИИ-помощник комп
 - Если записей больше 20 — показывай первые 20 и указывай общее количество
 
 ПАЙПЛАЙН ПОИСКА (строго соблюдай порядок):
+0. ВСЕГДА вызывай инструменты для получения актуальных данных — даже если похожий вопрос уже был в истории. История не является источником данных, она только контекст разговора. Никогда не отвечай на основании предыдущих ответов в истории без нового поиска.
 1. Если пользователь явно просит зайти на сайт или упоминает URL — сразу используй parse_project_site, без поиска в Excel
 2. Иначе сначала ищи данные в Excel-файлах (list_files → get_sheet_names → describe_sheet → search_in_sheet / count_values / load_sheet)
 3. Если в Excel данных нет — используй parse_project_site чтобы получить информацию с официального сайта проекта
@@ -129,7 +130,7 @@ async def ask(user_message: str, history: list[dict] | None = None) -> str:
                 model=settings.openai_model,
                 messages=messages,
                 tools=TOOLS,
-                tool_choice="auto",
+                tool_choice="required" if iteration == 0 else "auto",
                 temperature=0,
             )
             choice = response.choices[0]
